@@ -1,0 +1,38 @@
+apply plugin: 'java'
+apply plugin: 'eclipse'
+eclipse {
+  classpath {
+    downloadSources = false
+    downloadJavadoc = false
+  }
+}
+tasks.withType(JavaCompile) {
+	options.encoding = "UTF-8"
+}
+
+sourceCompatibility = 1.8
+jar {
+    baseName='Target'
+    version='1'
+    manifest {
+        attributes 'Main-Class': 'com.ozz.ConfirmAttendance'
+    }
+}
+task copyToLib( type: Copy ) {
+    into "$buildDir/libs/libs"
+    from configurations.runtime
+}
+jar { dependsOn copyToLib }
+
+repositories {
+	mavenLocal()
+    maven { url "http://maven.aliyun.com/nexus/content/repositories/central" }
+}
+
+dependencies {
+	compile("org.seleniumhq.selenium:selenium-java:+")
+	compile("org.apache.commons:commons-lang3:+")
+    compile("ch.qos.logback:logback-classic:+")
+    testCompile("org.testng:testng")
+    testCompile("junit:junit")
+}
