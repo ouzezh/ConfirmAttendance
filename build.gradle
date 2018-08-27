@@ -30,7 +30,7 @@ repositories {
 }
 
 dependencies {
-	compile("org.seleniumhq.selenium:selenium-java:+")
+	compile("org.seleniumhq.selenium:selenium-java:3.6.0")
 	compile("org.apache.commons:commons-lang3:+")
     compile("ch.qos.logback:logback-classic:+")
     testCompile("org.testng:testng")
