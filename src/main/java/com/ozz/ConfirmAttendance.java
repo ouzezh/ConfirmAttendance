@@ -175,10 +175,10 @@ public class ConfirmAttendance {
         } else {
           beginDate = DateUtils.parseDate(date + " 18:00", datePattern);
         }
-
         // 结束时间
         Date endDate = DateUtils.parseDate(date + " " + lines[i + 2].replaceFirst(timePattern, "$1"), datePattern);
 
+        // 计算加班时间
         double time = ((endDate.getTime() - beginDate.getTime()) / (30 * 60 * 1000)) / 2d;
         if (time > 0) {
           time = subEatTime(isWorkday, time);
