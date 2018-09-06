@@ -141,7 +141,6 @@ public class ConfirmAttendance {
     cal.set(Calendar.DAY_OF_MONTH, 25);
     cal.add(Calendar.MONTH, -1);
 
-    double overtimeTotal = 0;
     String datePattern = "yyyy-MM-dd HH:mm";
     String timePattern = "^.*(\\d{2}:\\d{2}).*$";
     for (int i = 0; i < lines.length; i=i+3) {
@@ -168,7 +167,9 @@ public class ConfirmAttendance {
 
         // 开始时间
         Date beginDate;
-        if (lines[i + 1].contains("加班")) {// 加班
+        boolean isWorkday = true;
+        if (lines[i + 1].contains("加班")) {
+          isWorkday = false;
           beginDate = DateUtils.parseDate(date + " " + lines[i + 1].replaceFirst(timePattern, "$1"), datePattern);
           log.debug(lines[i] + "\t" + lines[i + 1] + "\t" + lines[i + 2]);
         } else {
@@ -178,11 +179,13 @@ public class ConfirmAttendance {
         // 结束时间
         Date endDate = DateUtils.parseDate(date + " " + lines[i + 2].replaceFirst(timePattern, "$1"), datePattern);
 
-        double time = ((endDate.getTime() - beginDate.getTime()) / (30 * 60 * 1000)) / 2.0;
-        if (time >= 1) {
-          Pair<String, Double> item = new MutablePair<>(date, time);
-          overtimeTotal += time;
-          list.add(item);
+        double time = ((endDate.getTime() - beginDate.getTime()) / (30 * 60 * 1000)) / 2d;
+        if (time > 0) {
+          time = subEatTime(isWorkday, time);
+          if(time > 0) {
+            Pair<String, Double> item = new MutablePair<>(date, time);
+            list.add(item);
+          }
         }
       } catch (RuntimeException e) {
         throw e;
@@ -191,16 +194,22 @@ public class ConfirmAttendance {
       }
     }
 
-    // 取整
-    if (String.valueOf(overtimeTotal).contains(".5")) {
-      for (Pair<String, Double> item : list) {
-        if (String.valueOf(item.getValue()).contains(".5")) {
-          item.setValue(item.getValue() - 0.5);
-          break;
-        }
+    return list;
+  }
+
+  private double subEatTime(boolean isWorkday, double time) {
+    if(isWorkday) {
+      time = time - 0.5;
+    } else {
+      if(time>4 && time<=8) {// 加班时长超过4小时不超过8小时，扣除1小时
+        time = time - 1;
+      } else if(time>8 && time<=12) {// 加班时长超过8小时不超过12小时，扣除2小时
+        time = time - 2;
+      } else if(time>12) {// 超过12小时，扣除3小时
+        time = time - 3;
       }
     }
-    return list;
+    return time;
   }
 
   private void openConfirmPage(WebDriver driver) {
