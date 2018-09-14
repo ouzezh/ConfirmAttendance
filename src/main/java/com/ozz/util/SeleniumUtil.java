@@ -20,9 +20,9 @@ public class SeleniumUtil {
   protected static final Logger log = LoggerFactory.getLogger(SeleniumUtil.class);
   
   public static WebDriver getWebDriver() {
-//    System.setProperty("webdriver.firefox.bin","D:/Develop/tools/Mozilla Firefox/firefox.exe");
-//    System.setProperty("webdriver.gecko.driver", System.getProperty("user.dir").replaceAll("\\\\", "/") + "/driver/geckodriver.exe");
-//       return new FirefoxDriver();
+//    System.setProperty("webdriver.firefox.bin", ConfirmAttendance.USER_DIR + "/driver/FirefoxPortable/FirefoxPortable.exe");
+//    System.setProperty("webdriver.gecko.driver", ConfirmAttendance.USER_DIR + "/driver/geckodriver.exe");
+//    WebDriver driver = new FirefoxDriver();
 
     String driverPath = ConfirmAttendance.USER_DIR + "/driver/chromedriver.exe";
     String bin = ConfirmAttendance.USER_DIR + "/driver/ChromePortable/ChromePortable.exe";
@@ -31,10 +31,10 @@ public class SeleniumUtil {
 
     System.setProperty("webdriver.chrome.driver", driverPath);
     ChromeOptions options = new ChromeOptions(); 
-    options.setBinary(bin); 
-    ChromeDriver driver = new ChromeDriver(options);
+    options.setBinary(bin);
+    options.addArguments("--start-maximized");
+    WebDriver driver = new ChromeDriver(options);
 
-    driver.manage().window().maximize();
     return driver;
   }
 
