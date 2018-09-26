@@ -81,7 +81,7 @@ public class ConfirmAttendance {
     for (Pair<String, Double> item : list) {
       i++;
       log.debug("add row");
-      driver.findElement(By.xpath("//*[@id=\"ant-content\"]/div[1]/app-staff-leave-apply/nz-spin/div[2]/div/div[3]/button")).click();
+      driver.findElement(By.xpath("//*[@id=\"ant-content\"]/div[1]/app-staff-leave-apply/div/nz-spin/div[2]/div/div[1]/button")).click();
       sleep(200);
 
       log.debug("type date:" + item.getKey());
@@ -118,8 +118,7 @@ public class ConfirmAttendance {
     sleep(1000);
 
     log.debug("click overtime type");
-    driver.findElement(By.xpath("//*[@id=\"ant-content\"]/div[1]/app-staff-leave-apply/nz-spin/div[2]/div/app-process-form/div/form/div[3]/div[1]/div[2]/div/nz-select/div/div"))
-          .click();
+    driver.findElement(By.xpath("//*[@id=\"ant-content\"]/div[1]/app-staff-leave-apply/div/nz-spin/div[2]/div/app-process-form/div/form/div[3]/div[1]/div[2]/div/nz-select/div/div")).click();
     sleep(1000);
 
     log.debug("select overtime type");
