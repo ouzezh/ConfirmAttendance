@@ -7,4 +7,4 @@ chromedriver.exe 2.38.552522
 
 
 https://www.portablesoft.org/google-chrome/
-http://chromedriver.storage.googleapis.com/index.html
+http://npm.taobao.org/mirrors/chromedriver/
