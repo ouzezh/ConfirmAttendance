@@ -165,26 +165,24 @@ public class ConfirmAttendance {
         }
 
         // 开始时间
-        Date beginDate;
-        boolean isWorkday = true;
+        Date begin;
+        boolean isWorkday;
         if (lines[i + 1].contains("加班")) {
           isWorkday = false;
-          beginDate = DateUtils.parseDate(date + " " + lines[i + 1].replaceFirst(timePattern, "$1"), datePattern);
+          begin = DateUtils.parseDate(date + " " + lines[i + 1].replaceFirst(timePattern, "$1"), datePattern);
           log.debug(lines[i] + "\t" + lines[i + 1] + "\t" + lines[i + 2]);
         } else {
-          beginDate = DateUtils.parseDate(date + " 18:00", datePattern);
+          isWorkday = true;
+          begin = DateUtils.parseDate(date + " 18:00", datePattern);
         }
         // 结束时间
-        Date endDate = DateUtils.parseDate(date + " " + lines[i + 2].replaceFirst(timePattern, "$1"), datePattern);
+        Date end = DateUtils.parseDate(date + " " + lines[i + 2].replaceFirst(timePattern, "$1"), datePattern);
 
-        // 计算加班时间
-        double time = ((endDate.getTime() - beginDate.getTime()) / (30 * 60 * 1000)) / 2d;
-        if (time > 0) {
-          time = subEatTime(isWorkday, time);
-          if(time > 0) {
-            Pair<String, Double> item = new MutablePair<>(date, time);
-            list.add(item);
-          }
+        // 计算
+        double time = calcOvertime(begin, end, isWorkday);
+        if(time > 0) {
+          Pair<String, Double> item = new MutablePair<>(date, time);
+          list.add(item);
         }
       } catch (RuntimeException e) {
         throw e;
@@ -196,7 +194,14 @@ public class ConfirmAttendance {
     return list;
   }
 
-  private double subEatTime(boolean isWorkday, double time) {
+  private double calcOvertime(Date begin, Date end, boolean isWorkday) {
+    // 计算加班时间（单位：小时，精确度：0.5小时）
+    double time = ((end.getTime() - begin.getTime()) / (30 * 60 * 1000)) / 2d;
+    if (time < 0) {
+      return 0;
+    }
+
+    // 吃饭时间
     if(isWorkday) {
       time = time - 0.5;
     } else {
@@ -207,6 +212,11 @@ public class ConfirmAttendance {
       } else if(time>12) {// 超过12小时，扣除3小时
         time = time - 3;
       }
+    }
+
+    // 加班时间最少为一小时
+    if(time < 1) {
+      time = 0;
     }
     return time;
   }
