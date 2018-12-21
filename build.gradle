@@ -18,11 +18,14 @@ jar {
         attributes 'Main-Class': 'com.ozz.ConfirmAttendance'
     }
 }
-task copyToLib( type: Copy ) {
-    into "$buildDir/libs/libs"
-    from configurations.runtime
+
+task cleanJars {
+  file('build/libs/libs').delete()
 }
-jar { dependsOn copyToLib }
+task copyJars(type:Copy, dependsOn:cleanJars) {
+  from configurations.runtimeClasspath
+  into 'build/libs/libs'
+}
 
 repositories {
 	mavenLocal()

@@ -12,7 +12,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.time.DateUtils;
-import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -44,7 +43,7 @@ public class ConfirmAttendance {
 
       openConfirmPage(driver);
 
-      List<Pair<String, Double>> list = calOvertime(driver);
+      List<Pair<String, Long>> list = calOvertime(driver);
       if (list.isEmpty()) {
         log.debug("no record, exit...");
         return;
@@ -76,34 +75,35 @@ public class ConfirmAttendance {
     return new String(bytes);
   }
 
-  private void fillOvertime(WebDriver driver, List<Pair<String, Double>> list) {
+  private void fillOvertime(WebDriver driver, List<Pair<String, Long>> list) {
     int i = 0;
-    for (Pair<String, Double> item : list) {
+    for (Pair<String, Long> item : list) {
       i++;
       log.debug("add row");
       driver.findElement(By.xpath("//*[@id=\"ant-content\"]/div[1]/app-staff-leave-apply/div/nz-spin/div[2]/div/div[1]/button")).click();
       sleep(200);
 
-      log.debug("type date:" + item.getKey());
-      WebElement dataEle = driver.findElement(By.xpath("//*[@id=\"DataTables_Table_2\"]/tbody/tr[" + i + "]/td[2]/input"));
+      log.debug("type date:{}", item.getKey());
+      WebElement dataEle = driver.findElement(By.xpath(String.format("//*[@id=\"DataTables_Table_2\"]/tbody/tr[%d]/td[2]/input", i)));
       dataEle.clear();
       dataEle.sendKeys(item.getKey());
       sleep(200);
 
-      log.debug("type hour:" + item.getValue());
-      WebElement hourEle = driver.findElement(By.xpath("//*[@id=\"DataTables_Table_2\"]/tbody/tr[" + i + "]/td[3]/input"));
-      hourEle.clear();
-      hourEle.sendKeys(String.valueOf(item.getValue()));
+      log.debug("click hour select:{}");
+      WebElement hourEle = driver.findElement(By.xpath(String.format("//*[@id=\"DataTables_Table_2\"]/tbody/tr[%d]/td[3]/select", i, item.getValue())));
+      hourEle.click();
+      sleep(200);
+      log.debug("type hour select option:{}", item.getValue());
+      WebElement hourOption = driver.findElement(By.xpath(String.format("//*[@id=\"DataTables_Table_2\"]/tbody/tr[%d]/td[3]/select/option[%d]", i, item.getValue())));
+      hourOption.click();
       sleep(200);
 
-      log.debug("show clock in time:" + item.getValue());
+      log.debug("show clock in time{}", item.getValue());
       dataEle.click();
-      sleep(200);
-      hourEle.click();
       sleep(200);
     }
 
-    driver.findElement(By.xpath("//*[@id=\"DataTables_Table_2\"]/tbody/tr[" + i + "]/td[1]")).click();// 点击原因，自动计算汇总时数
+    driver.findElement(By.xpath(String.format("//*[@id=\"DataTables_Table_2\"]/tbody/tr[%d]/td[1]", i))).click();// 点击原因，自动计算汇总时数
   }
 
   private void openAttendanceFillPage(WebDriver driver) {
@@ -126,14 +126,14 @@ public class ConfirmAttendance {
     sleep(1000);
   }
 
-  private List<Pair<String, Double>> calOvertime(WebDriver driver) {
+  private List<Pair<String, Long>> calOvertime(WebDriver driver) {
     WebElement table = driver.findElement(By.xpath("//*[@id=\"ant-content\"]/div[1]/app-pag-confirm/div/div[3]/div[2]/div[2]"));
 
     return calOvertime(table.getText());
   }
 
-  private List<Pair<String, Double>> calOvertime(String text) {
-    List<Pair<String, Double>> list = new ArrayList<>();
+  private List<Pair<String, Long>> calOvertime(String text) {
+    List<Pair<String, Long>> list = new ArrayList<>();
     String[] lines = text.trim().split("\n");
 
     Calendar cal = Calendar.getInstance();
@@ -147,21 +147,21 @@ public class ConfirmAttendance {
         cal.add(Calendar.DAY_OF_MONTH, 1);
 
         if (i + 2 >= lines.length) {// 当前数据不完整
-          log.info("[skip]" + lines[i] + (i + 1 < lines.length ? "\t" + lines[i + 1] : ""));
+          log.info("[skip]{}{}", lines[i], i + 1 < lines.length ? "\t" + lines[i + 1] : "");
           continue;
         }
         if (lines[i + 1].matches(timePattern) && lines[i + 2].matches(timePattern)) {
         } else if (lines[i + 1].contains("周末") && lines[i + 2].contains("周末")) {
           continue;
         } else {// 数据格式不对
-          log.info("[skip]" + lines[i] + "\t" + lines[i + 1] + "\t" + lines[i + 2]);
+          log.info("[skip]{}\t{}\t{}", lines[i], lines[i + 1], lines[i + 2]);
           continue;
         }
 
         // 日期
         String date = DateFormatUtils.format(cal, "yyyy-MM-dd");
         if (cal.get(Calendar.DAY_OF_MONTH) != Integer.valueOf(lines[i]).intValue()) {
-          throw new RuntimeException("解析数据错误 ,line:" + i + ", text:\n" + text);
+          throw new RuntimeException(String.format("解析数据错误 ,line:%d, text:\n%s", i, text));
         }
 
         // 开始时间
@@ -170,18 +170,18 @@ public class ConfirmAttendance {
         if (lines[i + 1].contains("加班")) {
           isWorkday = false;
           begin = DateUtils.parseDate(date + " " + lines[i + 1].replaceFirst(timePattern, "$1"), datePattern);
-          log.debug(lines[i] + "\t" + lines[i + 1] + "\t" + lines[i + 2]);
+          log.info("parse overtime day：{}\t{}\t{}", lines[i], lines[i + 1], lines[i + 2]);
         } else {
           isWorkday = true;
-          begin = DateUtils.parseDate(date + " 18:00", datePattern);
+          begin = DateUtils.parseDate(date + " 18:30", datePattern);// 工作日从18:30开始计算
         }
         // 结束时间
         Date end = DateUtils.parseDate(date + " " + lines[i + 2].replaceFirst(timePattern, "$1"), datePattern);
 
         // 计算
-        double time = calcOvertime(begin, end, isWorkday);
+        long time = calcOvertime(begin, end, isWorkday);
         if(time > 0) {
-          Pair<String, Double> item = new MutablePair<>(date, time);
+          Pair<String, Long> item = Pair.of(date, time);
           list.add(item);
         }
       } catch (RuntimeException e) {
@@ -194,16 +194,15 @@ public class ConfirmAttendance {
     return list;
   }
 
-  private double calcOvertime(Date begin, Date end, boolean isWorkday) {
-    // 计算加班时间（单位：小时，精确度：0.5小时）
-    double time = ((end.getTime() - begin.getTime()) / (30 * 60 * 1000)) / 2d;
+  private long calcOvertime(Date begin, Date end, boolean isWorkday) {
+    // 计算加班时间
+    long time = (end.getTime() - begin.getTime()) / (60 * 60 * 1000);
     if (time < 0) {
       return 0;
     }
 
     // 吃饭时间
     if(isWorkday) {
-      time = time - 0.5;
     } else {
       if(time>4 && time<=8) {// 加班时长超过4小时不超过8小时，扣除1小时
         time = time - 1;
@@ -214,10 +213,6 @@ public class ConfirmAttendance {
       }
     }
 
-    // 加班时间最少为一小时
-    if(time < 1) {
-      time = 0;
-    }
     return time;
   }
 
