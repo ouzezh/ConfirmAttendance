@@ -1,3 +1,3 @@
 cd C:\Dev\workspace\ConfirmAttendance
-java -Djava.ext.dirs=libs -jar target.jar
+java -Djava.ext.dirs=ext -jar target.jar
 pause
