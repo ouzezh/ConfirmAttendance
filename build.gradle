@@ -20,11 +20,11 @@ jar {
 }
 
 task cleanJars {
-  file('build/libs/ext').delete()
+  file('$buildDir/libs/ext').delete()
 }
 task copyJars(type:Copy, dependsOn:cleanJars) {
   from configurations.runtimeClasspath
-  into 'build/libs/ext'
+  into '$buildDir/libs/ext'
 }
 
 repositories {
