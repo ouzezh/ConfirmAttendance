@@ -53,9 +53,10 @@ public class ConfirmAttendance {
       openAttendanceFillPage(driver);
 
       fillOvertime(driver, list);
+    } catch (RuntimeException e) {
+      throw e;
     } catch (Exception e) {
-      log.error(null, e);
-      throw (e instanceof RuntimeException) ? (RuntimeException) e : new RuntimeException(e);
+      throw new RuntimeException(e);
     }
   }
 
