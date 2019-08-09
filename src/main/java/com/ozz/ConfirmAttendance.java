@@ -167,15 +167,23 @@ public class ConfirmAttendance {
 
         // 开始时间
         Date begin;
-        boolean isWorkday;
-        if (lines[i + 1].contains("加班")) {
-          isWorkday = false;
-          begin = DateUtils.parseDate(date + " " + lines[i + 1].replaceFirst(timePattern, "$1"), datePattern);
-          log.info("parse overtime day：{}\t{}\t{}", lines[i], lines[i + 1], lines[i + 2]);
-        } else {
-          isWorkday = true;
-          begin = DateUtils.parseDate(date + " 18:30", datePattern);// 工作日从18:30开始计算
+        boolean isWorkday = !lines[i + 1].contains("加班");
+        begin = DateUtils.parseDate(date + " " + lines[i + 1].replaceFirst(timePattern, "$1"), datePattern);
+        log.info("parse overtime day：{}\t{}\t{}", lines[i], lines[i + 1], lines[i + 2]);
+
+        if (isWorkday) {
+          Date before = DateUtils.parseDate(date + " 08:30", datePattern);
+          Date after = DateUtils.parseDate(date + " 09:30", datePattern);
+          if(begin.before(before)) {
+            begin = before;
+          }
+          if(begin.after(after)) {
+            begin = after;
+          }
+          Calendar tmpCal = Calendar.getInstance();
+          tmpCal.add(Calendar.MINUTE, (int)(60*9.5));
         }
+
         // 结束时间
         Date end = DateUtils.parseDate(date + " " + lines[i + 2].replaceFirst(timePattern, "$1"), datePattern);
 
