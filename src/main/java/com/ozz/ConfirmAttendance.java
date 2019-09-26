@@ -205,7 +205,11 @@ public class ConfirmAttendance {
 
   private long calcOvertime(Date begin, Date end, boolean isWorkday) {
     // 计算加班时间
-    long time = (end.getTime() - begin.getTime()) / (60 * 60 * 1000);
+    long time = end.getTime() - begin.getTime();
+    if(isWorkday) {
+      time = time - new Double(9.5 * 60 * 60 * 1000).longValue();
+    }
+    time = time / (60 * 60 * 1000);
     if (time <= 0) {
       return 0;
     }
