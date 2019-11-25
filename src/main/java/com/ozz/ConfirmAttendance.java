@@ -1,7 +1,11 @@
 package com.ozz;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Type;
+import java.net.URL;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Calendar;
@@ -77,7 +81,7 @@ public class ConfirmAttendance {
       dataEle.sendKeys(item.getKey());
       sleep(200);
 
-      log.debug("click hour select:{}");
+      log.debug("click hour select");
       WebElement hourEle = driver.findElement(By.xpath(String
           .format("//*[@id=\"DataTables_Table_2\"]/tbody/tr[%d]/td[3]/select", i,
               item.getValue())));
@@ -86,7 +90,7 @@ public class ConfirmAttendance {
       log.debug("type hour select option:{}", item.getValue());
       WebElement hourOption = driver.findElement(By.xpath(String
           .format("//*[@id=\"DataTables_Table_2\"]/tbody/tr[%d]/td[3]/select/option[%d]", i,
-              item.getValue())));
+              item.getValue() + 1)));
       hourOption.click();
       sleep(200);
 
@@ -268,8 +272,9 @@ public class ConfirmAttendance {
   }
 
   private String getProp(String key) {
+    String path = "C:/dev/workspace/SeleniumHQ/ConfirmAttendance/src/main/resources/config.properties";
     Properties pro = new Properties();
-    try (InputStream in = getClass().getResourceAsStream("/config.properties")) {
+    try (InputStream in = new FileInputStream(path)) {
       pro.load(in);
     } catch (IOException e) {
       throw new RuntimeException(e);
