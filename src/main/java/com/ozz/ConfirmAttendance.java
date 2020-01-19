@@ -272,7 +272,7 @@ public class ConfirmAttendance {
   }
 
   private String getProp(String key) {
-    String path = "C:/dev/workspace/SeleniumHQ/ConfirmAttendance/src/main/resources/config.properties";
+    String path = String.format("%s/src/main/resources/config.properties", USER_DIR);
     Properties pro = new Properties();
     try (InputStream in = new FileInputStream(path)) {
       pro.load(in);
