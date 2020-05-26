@@ -214,22 +214,32 @@ public class ConfirmAttendance {
       time = time - new Double(9.5 * 60 * 60 * 1000).longValue();
     }
     time = time / (60 * 60 * 1000);
-    if (time <= 0) {
-      return 0;
-    }
 
     // 吃饭时间
-    if (isWorkday) {
+    if (time <= 0) {
+      time = 0;
     } else {
-      if (time > 4 && time <= 8) {// 加班时长超过4小时不超过8小时，扣除1小时
-        time = time - 1;
-      } else if (time > 8 && time <= 12) {// 加班时长超过8小时不超过12小时，扣除2小时
-        time = time - 2;
-      } else if (time > 12) {// 超过12小时，扣除3小时
-        time = time - 3;
+      if (isWorkday) {
+      } else {
+        if (time > 4 && time <= 8) {
+          // 加班时长超过4小时不超过8小时，扣除1小时
+          time = time - 1;
+        } else if (time > 8 && time <= 12) {
+          // 加班时长超过8小时不超过12小时，扣除2小时
+          time = time - 2;
+        } else if (time > 12) {
+          // 超过12小时，扣除3小时
+          time = time - 3;
+        }
       }
     }
 
+    System.out.println(
+        String.format(
+            "%s -> %s : %s",
+            DateFormatUtils.format(begin, "yyyy-MM-dd HH:mm:ss"),
+            DateFormatUtils.format(end, "yyyy-MM-dd HH:mm:ss"),
+            time));
     return time;
   }
 
@@ -245,7 +255,7 @@ public class ConfirmAttendance {
     log.debug("open homepage");
     driver.get(url);
     driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
-    sleep(2000);
+    sleep(5000);
 
     log.debug("type username");
     driver.findElement(By.id("txtUser")).click();

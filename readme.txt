@@ -13,7 +13,7 @@ http://npm.taobao.org/mirrors/chromedriver/
 
 --start_shell start--
 cd C:\Dev\workspace\ConfirmAttendance
-java -cp ConfirmAttendance.jar com.ozz.ConfirmAttendance
+java -cp out\artifacts\ConfirmAttendance_jar\ConfirmAttendance.jar;out\libs\ext;out\production\resources com.ozz.ConfirmAttendance
 taskkill /f /t /im chromedriver.exe
 pause
 --start_shell end--
