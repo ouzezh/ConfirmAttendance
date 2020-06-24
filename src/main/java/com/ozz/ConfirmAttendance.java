@@ -109,7 +109,7 @@ public class ConfirmAttendance {
 
     log.debug("click apply for overtime");
     driver.findElement(By.xpath("//*[@id=\"staff-self-menus\"]/li[1]/a")).click();
-    sleep(1000);
+    sleep(2000);
 
     log.debug("click new overtime");
     driver.findElement(By.xpath(
