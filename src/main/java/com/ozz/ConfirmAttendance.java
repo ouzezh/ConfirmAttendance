@@ -1,39 +1,77 @@
 package com.ozz;
 
+import com.alibaba.fastjson.JSON;
+import com.ozz.model.AttendanceData;
+import com.ozz.model.AttendanceData.ReturnDataBean.DTLBean;
+import com.ozz.util.SeleniumUtil;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Type;
-import java.net.URL;
 import java.text.ParseException;
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Calendar;
 import java.util.Date;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Scanner;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
-
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openqa.selenium.By;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.ozz.util.SeleniumUtil;
 
 public class ConfirmAttendance {
-
-  protected final Logger log = LoggerFactory.getLogger(getClass());
-
   // public static final String USER_DIR = "C:/Dev/workspace/ConfirmAttendance";
   public static String USER_DIR = System.getProperty("user.dir").replaceAll("\\\\", "/");
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws ParseException {
      new ConfirmAttendance().start();
+//    new ConfirmAttendance().parseAttendanceJson();
+  }
+
+  private void parseAttendanceJson() throws ParseException {
+    Scanner scanner = new Scanner(System.in);
+    System.out.println("请输入考勤JSON：");
+    String json = scanner.nextLine();
+    AttendanceData data = JSON.parseObject(json, AttendanceData.class);
+
+    // check date type
+    for (Entry<String, String> en : data.getReturnData().getXdfDayType().entrySet()) {
+      if(!"A".equals(en.getValue()) && !"B".equals(en.getValue())) {
+        throw new RuntimeException("非法考勤类型：" + en.toString());
+      }
+    }
+
+    // parse overtime date
+    Map<String, Long> overtimeMap = new TreeMap<>();
+    String dateFormat = "yyyy-MM-dd HH:mm:ss";
+    for (DTLBean dtlBean : data.getReturnData().getDTL()) {
+      if(StringUtils.isNotBlank(dtlBean.getTIMEBG()) && StringUtils.isNotBlank(dtlBean.getTIMEEND())) {
+        long res = calcOvertime(DateUtils.parseDate(dtlBean.getDate() + " " + dtlBean.getTIMEBG(), dateFormat),
+            DateUtils.parseDate(dtlBean.getDate() + " " + dtlBean.getTIMEEND(), dateFormat),
+            "A".equals(data.getReturnData().getXdfDayType().get(dtlBean.getDate())));
+        if (res > 0) {
+          overtimeMap.put(dtlBean.getDate(), res);
+        }
+      }
+    }
+
+    // print
+    System.out.println("-- overtime start --");
+    int c = 0;
+    for (Entry<String, Long> en : overtimeMap.entrySet()) {
+      System.out.println(String.format("%s: %s -> %s", ++c, en.getKey(), en.getValue()));
+    }
+    System.out.println("-- overtime end --");
   }
 
   public void start() {
@@ -45,18 +83,9 @@ public class ConfirmAttendance {
       driver = SeleniumUtil.getWebDriver();
       login(driver, getProp("url"), username, password);
 
-      openConfirmPage(driver);
-
-      List<Pair<String, Long>> list = calOvertime(driver);
-      if (list.isEmpty()) {
-        log.debug("no record, exit...");
-        return;
-      }
-
-      driver.get(getProp("url"));
       openAttendanceFillPage(driver);
 
-      fillOvertime(driver, list);
+      fillOvertime(driver);
     } catch (RuntimeException e) {
       throw e;
     } catch (Exception e) {
@@ -64,147 +93,105 @@ public class ConfirmAttendance {
     }
   }
 
-  private void fillOvertime(WebDriver driver, List<Pair<String, Long>> list) {
+  private void fillOvertime(WebDriver driver) {
+    LocalDate localDate = LocalDate.now();
+    localDate = localDate.plusMonths(-1);
+    localDate = localDate.plusDays(26 - localDate.getDayOfMonth());
+
     int i = 0;
-    for (Pair<String, Long> item : list) {
+    List<Pair<Integer, String>> dateList = new LinkedList<>();
+    do {
       i++;
-      log.debug("add row");
-      driver.findElement(By.xpath(
+      String date = localDate.toString();
+      dateList.add(0, Pair.of(i, date));
+
+      System.out.print(String.format("add row %s: %S", i, date));
+      findEle(driver, By.xpath(
           "//*[@id=\"ant-content\"]/div[1]/app-staff-leave-apply/div/nz-spin/div[2]/div/div[1]/button"))
           .click();
       sleep(200);
 
-      log.debug("type date:{}", item.getKey());
-      WebElement dataEle = driver.findElement(
+      System.out.print(" -> type date");
+      WebElement dataEle = findEle(driver, 
           By.xpath(String.format("//*[@id=\"DataTables_Table_2\"]/tbody/tr[%d]/td[2]/input", i)));
       dataEle.clear();
-      dataEle.sendKeys(item.getKey());
-      sleep(200);
-
-      log.debug("click hour select");
-      WebElement hourEle = driver.findElement(By.xpath(String
-          .format("//*[@id=\"DataTables_Table_2\"]/tbody/tr[%d]/td[3]/select", i,
-              item.getValue())));
-      hourEle.click();
-      sleep(200);
-      log.debug("type hour select option:{}", item.getValue());
-      WebElement hourOption = driver.findElement(By.xpath(String
-          .format("//*[@id=\"DataTables_Table_2\"]/tbody/tr[%d]/td[3]/select/option[%d]", i,
-              item.getValue() + 1)));
-      hourOption.click();
-      sleep(200);
-
-      log.debug("show clock in time{}", item.getValue());
+      dataEle.sendKeys(date);
       dataEle.click();
+      sleep(200);
+
+      System.out.println(" -> click desc to update hour");
+      findEle(driver, By.xpath(String.format("//*[@id=\"DataTables_Table_2\"]/tbody/tr[%s]/td[6]/input", i))).click();
+      sleep(200);
+
+      localDate = localDate.plusDays(1);
+    } while (localDate.getDayOfMonth() != 26);
+
+    sleep(500);
+    Iterator<Pair<Integer, String>> it = dateList.iterator();
+    while(it.hasNext()) {
+      Pair<Integer, String> pair = it.next();
+      System.out.print("check hour " + pair.getLeft());
+      WebElement hourEle = findEle(driver, By.xpath(String
+          .format("//*[@id=\"DataTables_Table_2\"]/tbody/tr[%d]/td[3]/select", pair.getLeft())));
+      String hour = hourEle.getAttribute("value");
+      System.out.println(String.format(" -> %s = %s", pair.getRight(), hour));
+      if(!"0".equals(hour)) {
+        it.remove();
+      }
+    }
+
+    for(Pair<Integer, String> pair : dateList) {
+      System.out.println(String.format("delete row %s: %S", pair.getLeft(), pair.getRight()));
+      findEle(driver, By.xpath(String.format("//*[@id=\"DataTables_Table_2\"]/tbody/tr[%d]/td[7]/i", pair.getLeft()))).click();
       sleep(200);
     }
 
-    driver.findElement(
-        By.xpath(String.format("//*[@id=\"DataTables_Table_2\"]/tbody/tr[%d]/td[1]", i)))
-        .click();// 点击原因，自动计算汇总时数
+    // 点击原因，自动计算汇总时数
+    System.out.println(String.format("fill end, click reason"));
+    findEle(driver, By.xpath("//*[@id=\"ant-content\"]/div[1]/app-staff-leave-apply/div/nz-spin/div[2]/div/app-process-form/div/form/div[5]/div/div[2]/div/nz-input/textarea"))
+        .click();
   }
 
   private void openAttendanceFillPage(WebDriver driver) {
     clickSelfHelp(driver);
 
-    log.debug("click apply for overtime");
-    driver.findElement(By.xpath("//*[@id=\"staff-self-menus\"]/li[1]/a")).click();
+    System.out.println("click apply for overtime");
+    findEle(driver, By.xpath("//*[@id=\"staff-self-menus\"]/li[1]/a")).click();
     sleep(2000);
 
-    log.debug("click new overtime");
-    driver.findElement(By.xpath(
+    System.out.println("click new overtime");
+    findEle(driver, By.xpath(
         "//*[@id=\"ant-content\"]/div[1]/app-staff-leave-list/app-ex-datatable/div/app-ex-search/div/form/div[3]/button[4]"))
         .click();
     sleep(1000);
 
-    log.debug("click overtime type");
-    driver.findElement(By.xpath(
+    System.out.println("click overtime type");
+    findEle(driver, By.xpath(
         "//*[@id=\"ant-content\"]/div[1]/app-staff-leave-apply/div/nz-spin/div[2]/div/app-process-form/div/form/div[3]/div[1]/div[2]/div/nz-select/div/div"))
         .click();
     sleep(1000);
 
-    log.debug("select overtime type");
-    driver.findElement(By.xpath("//*[@id=\"cdk-overlay-1\"]/div/div/ul/li[4]")).click();
+    System.out.println("select overtime type");
+    findEle(driver, By.xpath("//*[@id=\"cdk-overlay-1\"]/div/div/ul/li[4]")).click();
     sleep(1000);
   }
 
-  private List<Pair<String, Long>> calOvertime(WebDriver driver) {
-    WebElement table = driver.findElement(
-        By.xpath("//*[@id=\"ant-content\"]/div[1]/app-pag-confirm/div/div[3]/div[2]/div[2]"));
-
-    return calOvertime(table.getText());
-  }
-
-  private List<Pair<String, Long>> calOvertime(String text) {
-    List<Pair<String, Long>> list = new ArrayList<>();
-    String[] lines = text.trim().split("\n");
-
-    Calendar cal = Calendar.getInstance();
-    cal.set(Calendar.DAY_OF_MONTH, 25);
-    cal.add(Calendar.MONTH, -1);
-
-    String datePattern = "yyyy-MM-dd HH:mm";
-    String timePattern = "^.*(\\d{2}:\\d{2}).*$";
-    for (int i = 0; i < lines.length; i = i + 3) {
+  private WebElement findEle(WebDriver driver, By by) {
+    WebElement ele = null;
+    NoSuchElementException e = null;
+    for(int i=0; i<5 && ele==null; i++) {
       try {
-        cal.add(Calendar.DAY_OF_MONTH, 1);
-
-        if (i + 2 >= lines.length) {// 当前数据不完整
-          log.info("[skip]{}{}", lines[i], i + 1 < lines.length ? "\t" + lines[i + 1] : "");
-          continue;
-        }
-        if (lines[i + 1].matches(timePattern) && lines[i + 2].matches(timePattern)) {
-        } else if (lines[i + 1].contains("周末") && lines[i + 2].contains("周末")) {
-          continue;
-        } else {// 数据格式不对
-          log.info("[skip]{}\t{}\t{}", lines[i], lines[i + 1], lines[i + 2]);
-          continue;
-        }
-
-        // 日期
-        String date = DateFormatUtils.format(cal, "yyyy-MM-dd");
-        if (cal.get(Calendar.DAY_OF_MONTH) != Integer.valueOf(lines[i]).intValue()) {
-          throw new RuntimeException(String.format("解析数据错误 ,line:%d, text:\n%s", i, text));
-        }
-
-        // 开始时间
-        Date begin;
-        boolean isWorkday = !lines[i + 1].contains("加班");
-        begin = DateUtils
-            .parseDate(date + " " + lines[i + 1].replaceFirst(timePattern, "$1"), datePattern);
-        log.info("parse overtime day：{}\t{}\t{}", lines[i], lines[i + 1], lines[i + 2]);
-
-        if (isWorkday) {
-          Date before = DateUtils.parseDate(date + " 08:30", datePattern);
-          Date after = DateUtils.parseDate(date + " 09:30", datePattern);
-          if (begin.before(before)) {
-            begin = before;
-          }
-          if (begin.after(after)) {
-            begin = after;
-          }
-          Calendar tmpCal = Calendar.getInstance();
-          tmpCal.add(Calendar.MINUTE, (int) (60 * 9.5));
-        }
-
-        // 结束时间
-        Date end = DateUtils
-            .parseDate(date + " " + lines[i + 2].replaceFirst(timePattern, "$1"), datePattern);
-
-        // 计算
-        long time = calcOvertime(begin, end, isWorkday);
-        if (time > 0) {
-          Pair<String, Long> item = Pair.of(date, time);
-          list.add(item);
-        }
-      } catch (RuntimeException e) {
-        throw e;
-      } catch (Exception e) {
-        throw new RuntimeException(e);
+        ele = driver.findElement(by);
+      } catch (NoSuchElementException e1) {
+        e = e1;
+        System.out.println("try to get element: " + by.toString());
+        sleep(1000);
       }
     }
-
-    return list;
+    if(e != null) {
+      throw e;
+    }
+    return ele;
   }
 
   private long calcOvertime(Date begin, Date end, boolean isWorkday) {
@@ -243,40 +230,35 @@ public class ConfirmAttendance {
     return time;
   }
 
-  private void openConfirmPage(WebDriver driver) {
-    clickSelfHelp(driver);
-
-    log.debug("click attendance confirm");
-    driver.findElement(By.xpath("//*[@id=\"staff-self-menus\"]/li[2]/a")).click();
-    sleep(500);
-  }
-
   private void login(WebDriver driver, String url, String username, String password) {
-    log.debug("open homepage");
+    System.out.println("open homepage");
     driver.get(url);
     driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
     sleep(5000);
 
-    log.debug("type username");
-    driver.findElement(By.id("txtUser")).click();
-    driver.findElement(By.id("txtUser")).clear();
-    driver.findElement(By.id("txtUser")).sendKeys(username);
+    System.out.println("type username");
+    findEle(driver, By.id("txtUser")).click();
+    findEle(driver, By.id("txtUser")).clear();
+    findEle(driver, By.id("txtUser")).sendKeys(username);
 
-    log.debug("type password");
-    driver.findElement(By.id("txtPwd")).click();
-    driver.findElement(By.id("txtPwd")).clear();
-    driver.findElement(By.id("txtPwd")).sendKeys(password);
+    System.out.println("type password");
+    findEle(driver, By.id("txtPwd")).click();
+    findEle(driver, By.id("txtPwd")).clear();
+    findEle(driver, By.id("txtPwd")).sendKeys(password);
     password = null;
 
-    log.debug("loging...");
-    driver.findElement(By.id("loginBtn")).click();
+    System.out.println("loging...");
+    findEle(driver, By.id("loginBtn")).click();
 
     sleep(3000);
   }
 
   private void clickSelfHelp(WebDriver driver) {
-    log.debug("click self-help");
-    WebElement ele = driver.findElement(By.id("staff-self"));
+    System.out.println("switch to self-help iframe");
+    driver.switchTo().frame(findEle(driver, By.xpath("//*[@id=\"app\"]/div/section/section/main/iframe")));
+
+    System.out.println("click self-help");
+    WebElement ele = findEle(driver, By.xpath("//*[@id=\"staff-self\"]"));
     ele.click();
     sleep(500);
   }

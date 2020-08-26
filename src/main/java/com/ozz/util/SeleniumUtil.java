@@ -1,8 +1,8 @@
 package com.ozz.util;
 
+import com.ozz.ConfirmAttendance;
 import java.util.Iterator;
 import java.util.Set;
-
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -11,14 +11,8 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.ozz.ConfirmAttendance;
 
 public class SeleniumUtil {
-  protected static final Logger log = LoggerFactory.getLogger(SeleniumUtil.class);
-  
   public static WebDriver getWebDriver() {
 //    System.setProperty("webdriver.firefox.bin", ConfirmAttendance.USER_DIR + "/driver/FirefoxPortable/FirefoxPortable.exe");
 //    System.setProperty("webdriver.gecko.driver", ConfirmAttendance.USER_DIR + "/driver/geckodriver.exe");
@@ -26,8 +20,8 @@ public class SeleniumUtil {
 
     String driverPath = ConfirmAttendance.USER_DIR + "/driver/chromedriver.exe";
     String bin = ConfirmAttendance.USER_DIR + "/driver/ChromePortable/ChromePortable.exe";
-    log.info("webdriver.chrome.bin: " + bin);
-    log.info("webdriver.chrome.driver: " + driverPath);
+    System.out.println("webdriver.chrome.bin: " + bin);
+    System.out.println("webdriver.chrome.driver: " + driverPath);
 
     System.setProperty("webdriver.chrome.driver", driverPath);
     ChromeOptions options = new ChromeOptions(); 

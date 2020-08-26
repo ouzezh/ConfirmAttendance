@@ -1,41 +1,44 @@
-apply plugin: 'java'
-apply plugin: 'eclipse'
-eclipse {
-  classpath {
-    downloadSources = false
-    downloadJavadoc = false
-  }
-}
-tasks.withType(JavaCompile) {
-	options.encoding = "UTF-8"
+plugins {
+    id 'java'
 }
 
-sourceCompatibility = 1.8
-jar {
-    baseName='target'
-    version='0.1'
-    manifest {
-        attributes 'Main-Class': 'com.ozz.ConfirmAttendance'
-    }
-}
+group = 'com.ozz.demo'
+version = '0.1'
+sourceCompatibility = '1.8'
 
 task cleanJars {
-  file('$buildDir/libs/ext').delete()
+    file('$buildDir/libs/ext').delete()
 }
-task copyJars(type:Copy, dependsOn:cleanJars) {
-  from configurations.runtimeClasspath
-  into '$buildDir/libs/ext'
+task copyJars(type: Copy, dependsOn: cleanJars) {
+    from configurations.runtimeClasspath
+    into '$buildDir/libs/ext'
 }
 
 repositories {
-	mavenLocal()
-    maven { url "http://maven.aliyun.com/nexus/content/repositories/central" }
+    mavenLocal()
+    maven { url 'https://maven.aliyun.com/repository/central' }
+    maven { url 'https://maven.aliyun.com/repository/public' }
+    maven { url 'https://maven.aliyun.com/repository/google' }
+    maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+    maven { url 'https://maven.aliyun.com/repository/spring' }
+    maven { url 'https://maven.aliyun.com/repository/spring-plugin' }
+    maven { url 'https://maven.aliyun.com/repository/grails-core' }
+    maven { url 'https://maven.aliyun.com/repository/apache-snapshots' }
+    jcenter()
+    mavenCentral()
 }
 
 dependencies {
-	implementation 'org.seleniumhq.selenium:selenium-java:3.14.0'
-	implementation 'org.apache.commons:commons-lang3:+'
-    implementation 'ch.qos.logback:logback-classic:+'
+    implementation 'org.seleniumhq.selenium:selenium-java:3.14.0'
+    implementation 'com.alibaba:fastjson:1.2.73'
+    implementation 'org.apache.commons:commons-lang3:3.11'
 
-    testImplementation 'junit:junit:+'
+    compileOnly 'org.projectlombok:lombok:1.18.12'
+    annotationProcessor 'org.projectlombok:lombok:1.18.12'
 }
+
+test {
+    useJUnitPlatform()
+}
+
+
