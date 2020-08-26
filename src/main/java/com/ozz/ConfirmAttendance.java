@@ -247,7 +247,7 @@ public class ConfirmAttendance {
     findEle(driver, By.id("txtPwd")).sendKeys(password);
     password = null;
 
-    System.out.println("loging...");
+    System.out.println("start login");
     findEle(driver, By.id("loginBtn")).click();
 
     sleep(3000);
